@@ -5,7 +5,9 @@ from linebot import LineBotApi, WebhookHandler
 from linebot.exceptions import InvalidSignatureError
 from linebot.models import MessageEvent, ImageMessage, ImageSendMessage
 from PIL import Image
+import matplotlib.pyplot as plt
 from dotenv import load_dotenv
+from facefuncs import get_path_return_output
 
 load_dotenv()
 
@@ -20,12 +22,12 @@ def callback():
     body = request.get_data(as_text=True)
     try:
         handler.handle(body, signature)
-        return '', 200
     except InvalidSignatureError:
         abort(400)
     except Exception as e:
         app.logger.error(f"Error handling request: {e}")
         return '', 500
+    return '', 200
 
 
 @handler.add(MessageEvent, message=ImageMessage)
@@ -36,15 +38,20 @@ def handle_image_message(event):
     with open(image_path, 'wb') as f:
         f.write(image_data.read())
 
-    # 此處原本執行 Notebook 的代碼需要調整為直接處理圖片的代碼
+    highest_score_image, highest_score_image_path = get_path_return_output(
+        image_path)
+    img = Image.open(highest_score_image_path)
+    plt.imshow(img)
+    plt.axis('off')
+    plt.title(f"Most similar image: {highest_score_image}")
+    plt.savefig('output_image.jpg')
+    plt.close()
 
-    # 假設處理完畢後保存圖片為 'output_image.jpg'
-    output_image_path = 'output_image.jpg'
     line_bot_api.reply_message(
         event.reply_token,
         ImageSendMessage(
-            original_content_url=f"https://{os.getenv('kaomoji')}.herokuapp.com/images/{output_image_path}",
-            preview_image_url=f"https://{os.getenv('kaomoji')}.herokuapp.com/images/{output_image_path}"
+            original_content_url=f"https://{os.getenv('kaomoji')}.herokuapp.com/images/output_image.jpg",
+            preview_image_url=f"https://{os.getenv('kaomoji')}.herokuapp.com/images/output_image.jpg"
         )
     )
 
